@@ -140,6 +140,87 @@ window.updatePrices = () => {
   // إعادة الرسم لتحديث الأرقام
   renderAll();
 };
+// في js/main.js
+
+window.addObstacle = (type) => {
+  if (!state.buildings) state.buildings = [];
+
+  let newObj = { x: 0, y: 0, type: type };
+
+  // تخصيص الأبعاد والموقع حسب النوع
+  if (type === 'road') {
+    newObj.w = 100; // طريق طويل افتراضياً
+    newObj.h = 6;   // عرض الطريق
+    newObj.x = -50; // وضعه في المنتصف
+  } else if (type === 'well') {
+    newObj.w = 5;
+    newObj.h = 5;
+    newObj.x = 0;
+  } else {
+    // مبنى عادي
+    newObj.w = 15;
+    newObj.h = 10;
+    newObj.x = 0;
+  }
+
+  state.buildings.push(newObj);
+  renderAll();
+
+  // رسالة توضيحية
+  const labels = { road: 'طريق 🛣️', well: 'بئر 💧', house: 'مبنى 🏠' };
+  showToast(`تم إضافة ${labels[type]}`);
+};
+
+// دالة مساعدة للتوست (للتأكد من وجودها)
+function showToast(m) {
+  const t = document.getElementById('toast');
+  if (t) { t.innerText = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2000); }
+}
+// إغلاق بطاقة المبنى
+window.closeBuildingCard = () => {
+  const card = $('buildingCard');
+  card.classList.remove('active');
+  setTimeout(() => {
+    if (!card.classList.contains('active')) card.style.display = 'none';
+  }, 300); // انتظار انتهاء الأنيميشن
+  state.selectedBuildingIndex = -1;
+};
+
+// تحديث الأبعاد فورياً
+window.updateBuildingDim = (key, value) => {
+  const idx = state.selectedBuildingIndex;
+  if (idx !== -1 && state.buildings[idx]) {
+    const val = parseFloat(value);
+    if (val > 0) {
+      state.buildings[idx][key] = val;
+
+      // استيراد renderAll هنا أو التأكد من أنها متاحة عالمياً
+      // بما أننا نستخدم modules، يفضل استدعاؤها عبر window إذا كانت مربوطة في main.js
+      // أو استيرادها في أعلى الملف إذا لم يحدث تداخل دائري.
+      // الحل الأضمن هو استدعاء دالة الرسم:
+      import('./render.js').then(module => module.renderAll());
+    }
+  }
+};
+
+// حذف المبنى من البطاقة
+window.deleteSelectedBuilding = () => {
+  const idx = state.selectedBuildingIndex;
+  if (idx !== -1) {
+    state.buildings.splice(idx, 1);
+    window.closeBuildingCard();
+    import('./render.js').then(module => module.renderAll());
+
+    // إشعار
+    const toast = document.getElementById('toast');
+    if (toast) {
+      toast.innerText = "تم حذف المبنى";
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2000);
+    }
+  }
+};
+
 window.updatePrices = () => {
   state.prices.tree = parseFloat($('priceTree').value) || 0;
   state.prices.hose = parseFloat($('priceHose').value) || 0;

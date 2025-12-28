@@ -78,7 +78,17 @@
 
         <!-- أدوات التحكم -->
         <div class="dock-group">
-            <button class="dock-btn" onclick="addBuilding()" title="إضافة مبنى/عائق"><i class="fas fa-home"></i></button>
+    <button class="dock-btn" id="editBtn" onclick="toggleEditMode()" title="تعديل الأبعاد"><i class="fas fa-pen-ruler"></i></button>
+    
+    <!-- زر المبنى -->
+    <button class="dock-btn" onclick="addObstacle('house')" title="إضافة مبنى"><i class="fas fa-home"></i></button>
+    
+    <!-- زر الطريق -->
+    <button class="dock-btn" onclick="addObstacle('road')" title="إضافة طريق"><i class="fas fa-road"></i></button>
+    
+    <!-- زر البئر -->
+    <button class="dock-btn" onclick="addObstacle('well')" title="مصدر مياه (بئر)"><i class="fas fa-bullseye" style="color:#29b6f6"></i></button>
+    
             <button class="dock-btn" id="editBtn" onclick="toggleEditMode()" title="تعديل الأبعاد"><i class="fas fa-pen-ruler"></i></button>
             <button class="dock-btn" onclick="rotateMap(90)" title="تدوير"><i class="fas fa-sync-alt"></i></button>
             <button class="dock-btn" onclick="toggleWatering()" title="نظام الري"><i class="fas fa-faucet-drip"></i></button>

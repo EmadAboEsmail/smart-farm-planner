@@ -170,43 +170,86 @@ function isLocationBlocked(x, y, buildings) {
 
 // في js/render.js
 
+// في js/render.js
+
 function renderBuildings() {
   const group = document.createElementNS(svgNS, "g");
   const buildings = state.buildings || [];
 
   buildings.forEach((b, index) => {
+    // نستخدم مجموعة (Group) لكل عنصر لكي نستطيع إضافة تفاصيل (مثل خط الطريق)
+    const itemGroup = document.createElementNS(svgNS, "g");
+
+    // 1. المستطيل الأساسي (جسم الكائن)
     const rect = document.createElementNS(svgNS, "rect");
     rect.setAttribute("x", b.x);
     rect.setAttribute("y", b.y);
     rect.setAttribute("width", b.w);
     rect.setAttribute("height", b.h);
 
-    // التحقق هل هذا المبنى هو المحدد حالياً؟
-    const isSelected = (state.selectedBuildingIndex === index);
-
-    if (isSelected) {
-      // ستايل المبنى المحدد (أزرق ومضيء)
-      rect.setAttribute("fill", "#e3f2fd");
-      rect.setAttribute("stroke", "#2196f3");
-      rect.setAttribute("stroke-width", "3");
-      rect.setAttribute("opacity", "0.9");
-    } else {
-      // الستايل العادي (أحمر)
-      rect.setAttribute("fill", "#ffcdd2");
-      rect.setAttribute("stroke", "#c62828");
-      rect.setAttribute("stroke-width", "2");
-      rect.setAttribute("opacity", "0.6");
-    }
-
-    rect.style.cursor = "move";
+    // خصائص مشتركة للتفاعل
     rect.setAttribute("class", "building-rect");
     rect.setAttribute("data-index", index);
+    rect.style.cursor = "move";
 
-    group.appendChild(rect);
+    // التحقق هل هو المحدد حالياً؟
+    const isSelected = (state.selectedBuildingIndex === index);
+
+    // --- تخصيص الشكل حسب النوع ---
+    if (b.type === 'road') {
+      // ستايل الطريق
+      rect.setAttribute("fill", "#607d8b"); // رمادي أسفلتي
+      rect.setAttribute("stroke", isSelected ? "#2196f3" : "#455a64");
+      rect.setAttribute("stroke-width", isSelected ? "2" : "0");
+
+      // إضافة خط متقطع في منتصف الطريق
+      const line = document.createElementNS(svgNS, "line");
+      if (b.w > b.h) { // طريق أفقي
+        line.setAttribute("x1", b.x); line.setAttribute("y1", b.y + b.h / 2);
+        line.setAttribute("x2", b.x + b.w); line.setAttribute("y2", b.y + b.h / 2);
+      } else { // طريق عمودي
+        line.setAttribute("x1", b.x + b.w / 2); line.setAttribute("y1", b.y);
+        line.setAttribute("x2", b.x + b.w / 2); line.setAttribute("y2", b.y + b.h);
+      }
+      line.setAttribute("stroke", "#ffffff");
+      line.setAttribute("stroke-width", "1");
+      line.setAttribute("stroke-dasharray", "5,5");
+      line.setAttribute("pointer-events", "none"); // لكي لا يعيق النقر
+      itemGroup.appendChild(rect); // نضيف المستطيل أولاً
+      itemGroup.appendChild(line); // ثم الخط فوقه
+
+    } else if (b.type === 'well') {
+      // ستايل البئر
+      // نجعله دائرياً باستخدام rx
+      rect.setAttribute("rx", "50%");
+      rect.setAttribute("fill", "#039be5"); // أزرق مائي
+      rect.setAttribute("stroke", isSelected ? "#fff" : "#0277bd");
+      rect.setAttribute("stroke-width", "2");
+
+      // إضافة دائرة صغيرة في المنتصف (عمق البئر)
+      const innerCircle = document.createElementNS(svgNS, "circle");
+      innerCircle.setAttribute("cx", b.x + b.w / 2);
+      innerCircle.setAttribute("cy", b.y + b.h / 2);
+      innerCircle.setAttribute("r", Math.min(b.w, b.h) * 0.2);
+      innerCircle.setAttribute("fill", "#01579b"); // أزرق غامق
+      innerCircle.setAttribute("pointer-events", "none");
+
+      itemGroup.appendChild(rect);
+      itemGroup.appendChild(innerCircle);
+
+    } else {
+      // ستايل المبنى العادي (الافتراضي)
+      rect.setAttribute("fill", "#ef9a9a"); // أحمر فاتح
+      rect.setAttribute("stroke", isSelected ? "#2196f3" : "#c62828");
+      rect.setAttribute("stroke-width", isSelected ? "2" : "1");
+      rect.setAttribute("opacity", "0.9");
+      itemGroup.appendChild(rect);
+    }
+
+    group.appendChild(itemGroup);
   });
   return group;
-}
-function renderPipes(pipeDataMap, isRowMode) {
+} function renderPipes(pipeDataMap, isRowMode) {
   const group = document.createElementNS(svgNS, "g");
   let totalLength = 0;
 

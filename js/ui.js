@@ -117,66 +117,38 @@ export function closeModal(v) {
 // في js/ui.js
 
 // فتح بطاقة المبنى
-export function showBuildingCard(idx) {
-  // إغلاق أي بطاقة أخرى
-  closeCard();
+// في js/ui.js
 
+export function showBuildingCard(idx) {
+  closeCard();
   state.selectedBuildingIndex = idx;
   const building = state.buildings[idx];
 
-  // ملء الخانات بالأبعاد الحالية
-  const wInput = $('buildW');
-  const hInput = $('buildH');
+  // تحديث الأبعاد
+  $('buildW').value = building.w;
+  $('buildH').value = building.h;
 
-  if (wInput) wInput.value = building.w;
-  if (hInput) hInput.value = building.h;
+  // --- تحديث عنوان البطاقة حسب النوع ---
+  const titleSpan = document.querySelector('#buildingCard .card-header span');
+  const icon = document.querySelector('#buildingCard .card-header i');
+
+  if (building.type === 'road') {
+    titleSpan.innerText = "طريق رئيسي / فرعي";
+    icon.className = "fas fa-road";
+    icon.style.color = "#607d8b";
+  } else if (building.type === 'well') {
+    titleSpan.innerText = "مصدر مياه (بئر)";
+    icon.className = "fas fa-bullseye"; // أو fa-tint
+    icon.style.color = "#039be5";
+  } else {
+    titleSpan.innerText = "مبنى / عائق";
+    icon.className = "fas fa-home";
+    icon.style.color = "var(--danger)";
+  }
+  // ------------------------------------
 
   const card = $('buildingCard');
   card.style.display = 'flex';
   requestAnimationFrame(() => card.classList.add('active'));
 }
 
-// إغلاق بطاقة المبنى
-window.closeBuildingCard = () => {
-  const card = $('buildingCard');
-  card.classList.remove('active');
-  setTimeout(() => {
-    if (!card.classList.contains('active')) card.style.display = 'none';
-  }, 300); // انتظار انتهاء الأنيميشن
-  state.selectedBuildingIndex = -1;
-};
-
-// تحديث الأبعاد فورياً
-window.updateBuildingDim = (key, value) => {
-  const idx = state.selectedBuildingIndex;
-  if (idx !== -1 && state.buildings[idx]) {
-    const val = parseFloat(value);
-    if (val > 0) {
-      state.buildings[idx][key] = val;
-
-      // استيراد renderAll هنا أو التأكد من أنها متاحة عالمياً
-      // بما أننا نستخدم modules، يفضل استدعاؤها عبر window إذا كانت مربوطة في main.js
-      // أو استيرادها في أعلى الملف إذا لم يحدث تداخل دائري.
-      // الحل الأضمن هو استدعاء دالة الرسم:
-      import('./render.js').then(module => module.renderAll());
-    }
-  }
-};
-
-// حذف المبنى من البطاقة
-window.deleteSelectedBuilding = () => {
-  const idx = state.selectedBuildingIndex;
-  if (idx !== -1) {
-    state.buildings.splice(idx, 1);
-    window.closeBuildingCard();
-    import('./render.js').then(module => module.renderAll());
-
-    // إشعار
-    const toast = document.getElementById('toast');
-    if (toast) {
-      toast.innerText = "تم حذف المبنى";
-      toast.classList.add('show');
-      setTimeout(() => toast.classList.remove('show'), 2000);
-    }
-  }
-}; 
