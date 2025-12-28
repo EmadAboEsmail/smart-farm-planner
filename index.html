@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>نظام إدارة المزارع الذكي</title>
+    
+    <!-- 1. استدعاء خط "Cairo" الحديث -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- 2. استدعاء مكتبة أيقونات FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- حاوية الخريطة -->
+    <div id="mapContainer">
+        <div class="grid-pattern"></div>
+        <div id="drawingBoard"></div>
+    </div>
+
+    <!-- حقل إدخال قياس الحواف العائم -->
+    <input type="number" id="edgeInput" placeholder="متر">
+
+    <!-- نافذة التأكيد (Modal) -->
+    <div id="customModal" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-icon"><i class="fas fa-exclamation-triangle"></i></div>
+            <h3 id="modalTitle">تأكيد</h3>
+            <p id="modalMsg">هل أنت متأكد؟</p>
+            <div class="modal-actions">
+                <button class="modal-btn btn-cancel" onclick="closeModal(false)">إلغاء</button>
+                <button class="modal-btn btn-confirm" onclick="closeModal(true)">نعم، نفذ</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- بطاقة تفاصيل الشجرة -->
+    <div id="treeCard" class="tree-card">
+        <div class="card-header">
+            <div style="display:flex;align-items:center;gap:8px">
+                <i class="fas fa-tree" style="color:var(--primary)"></i>
+                <span id="cardCropType" style="font-weight:bold">شجرة</span>
+            </div>
+            <button class="close-icon" onclick="closeCard()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="card-details" id="cardDetails"></div>
+        
+        <div class="divider">إجراءات</div>
+        
+        <div class="card-actions-grid">
+            <button class="action-btn btn-move" onclick="enableTreeMove()">
+                <i class="fas fa-arrows-alt"></i> نقل
+            </button>
+            <button class="action-btn btn-del-tree" onclick="askDelete('tree')">
+                <i class="fas fa-trash"></i> حذف شجرة
+            </button>
+            <button class="action-btn btn-del-row" onclick="askDelete('row')">
+                <i class="fas fa-align-justify"></i> حذف صف
+            </button>
+            <button class="action-btn btn-del-col" onclick="askDelete('col')">
+                <i class="fas fa-columns"></i> حذف عمود
+            </button>
+        </div>
+    </div>
+
+    <!-- القائمة العائمة السفلية (Floating Dock) - بديل الشريط القديم -->
+    <div class="floating-dock">
+        <!-- مجموعة العرض -->
+        <div class="dock-group">
+            <button class="dock-btn" onclick="toggleSidebar()" title="الإعدادات"><i class="fas fa-cog"></i></button>
+            <button class="dock-btn" onclick="toggleStats()" title="الإحصائيات"><i class="fas fa-chart-pie"></i></button>
+        </div>
+
+        <div class="dock-separator"></div>
+
+        <!-- أدوات التحكم -->
+        <div class="dock-group">
+            <button class="dock-btn" onclick="addBuilding()" title="إضافة مبنى/عائق"><i class="fas fa-home"></i></button>
+            <button class="dock-btn" id="editBtn" onclick="toggleEditMode()" title="تعديل الأبعاد"><i class="fas fa-pen-ruler"></i></button>
+            <button class="dock-btn" onclick="rotateMap(90)" title="تدوير"><i class="fas fa-sync-alt"></i></button>
+            <button class="dock-btn" onclick="toggleWatering()" title="نظام الري"><i class="fas fa-faucet-drip"></i></button>
+        </div>
+
+        <div class="dock-separator"></div>
+
+        <!-- الزووم والتراجع -->
+        <div class="dock-group">
+            <button class="dock-btn" onclick="zoomMap(0.2)"><i class="fas fa-plus"></i></button>
+            <button class="dock-btn" onclick="zoomMap(-0.2)"><i class="fas fa-minus"></i></button>
+            <button class="dock-btn" onclick="undoAction()" style="position:relative">
+                <i class="fas fa-undo"></i>
+                <span id="undoBadge" class="badge" style="display:none">0</span>
+            </button>
+        </div>
+        
+        <!-- زر القائمة الإضافية (للموبايل أو العناصر الأقل استخداماً) -->
+        <div class="dock-separator"></div>
+        <button class="dock-btn main-action" onclick="exportMap()" title="تصدير"><i class="fas fa-camera"></i></button>
+    </div>
+
+    <!-- أزرار عائمة جانبية للوضع الليلي و 3D -->
+    <div class="side-floaters">
+        <button class="floater-btn" onclick="toggleNightMode()" title="الوضع الليلي"><i class="fas fa-moon"></i></button>
+        <button class="floater-btn" id="btn3D" onclick="toggle3DView()" title="3D"><i class="fas fa-cube"></i></button>
+        <button class="floater-btn" onclick="resetView()" title="ريست"><i class="fas fa-crosshairs"></i></button>
+    </div>
+
+    <!-- الشريط الجانبي (Glass Sidebar) -->
+    <div id="sidebar" class="sidebar">
+        <div class="sidebar-header">
+            <h3><i class="fas fa-sliders-h"></i> إعدادات المزرعة</h3>
+            <button class="close-sidebar" onclick="toggleSidebar()"><i class="fas fa-chevron-right"></i></button>
+        </div>
+        
+        <div class="sidebar-body">
+            <div class="input-section">
+                <label><i class="fas fa-vector-square"></i> أبعاد الأرض (متر)</label>
+                <div class="input-row">
+                    <input type="number" id="landLength" value="100" placeholder="الطول">
+                    <span class="x-divider">×</span>
+                    <input type="number" id="landWidth" value="60" placeholder="العرض">
+                </div>
+            </div>
+
+            <div class="input-section">
+                <label><i class="fas fa-seedling"></i> مسافات الزراعة</label>
+                <div class="input-grid">
+                    <div class="input-wrapper">
+                        <span>بين الصفوف</span>
+                        <input type="number" id="rowSpacing" value="8">
+                    </div>
+                    <div class="input-wrapper">
+                        <span>بين الشجر</span>
+                        <input type="number" id="treeSpacing" value="6">
+                    </div>
+                </div>
+            </div>
+
+            <div class="input-section highlight-section">
+                <label><i class="fas fa-water"></i> إعدادات الري</label>
+                <div class="control-row">
+                    <span>الاتجاه</span>
+                    <select onchange="updateIrrigation('mode', this.value)" class="styled-select">
+                        <option value="row" selected>أفقي ⮕</option>
+                        <option value="col">عمودي ⬇</option>
+                    </select>
+                </div>
+                <div class="control-row" style="margin-top:10px">
+                    <span>الإزاحة (م)</span>
+                    <input type="number" step="0.5" value="0" oninput="updateIrrigation('offset', this.value)" class="offset-input">
+                </div>
+                    <!-- داخل <div class="sidebar-body"> ... بعد قسم إعدادات الري -->
+
+<div class="input-section highlight-section" style="border-color: var(--accent);">
+    <label><i class="fas fa-calculator"></i> حساب التكاليف (تقديري)</label>
+    <div class="input-grid">
+        <div class="input-wrapper">
+            <span>سعر الشتلة</span>
+            <input type="number" id="priceTree" value="50" oninput="updatePrices()">
+        </div>
+        <div class="input-wrapper">
+            <span>سعر متر الخرطوم</span>
+            <input type="number" id="priceHose" value="10" oninput="updatePrices()">
+        </div>
+    </div>
+</div>
+            </div>
+
+            <div class="sidebar-actions">
+                <button class="generate-btn primary" onclick="initMap(true)">
+                    <i class="fas fa-magic"></i> إنشاء مخطط جديد
+                </button>
+                <button class="generate-btn danger" onclick="askRefresh()">
+                    <i class="fas fa-trash-alt"></i> مسح الكل
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- لوحة الإحصائيات -->
+   <!-- استبدل div id="statsPanel" القديم بهذا الجديد -->
+<div id="statsPanel" class="stats-panel">
+    <!-- الجزء العلوي: الإحصائيات -->
+    <div class="stats-row">
+        <div class="stat-item">
+            <div class="stat-icon"><i class="fas fa-ruler-combined"></i></div>
+            <div>
+                <div class="stat-val" id="statArea">0</div>
+                <div class="stat-label">المساحة</div>
+            </div>
+        </div>
+        
+        
+        <!-- زر التكلفة (قابل للنقر) -->
+        <div class="stat-item cost-trigger" onclick="toggleCostInputs()" title="اضغط لتعديل الأسعار">
+            <div class="stat-icon" style="color:var(--accent); background:rgba(255, 152, 0, 0.15)">
+                <i class="fas fa-coins"></i>
+            </div>
+            <div>
+                <div class="stat-val" id="statTotalCost">0</div>
+                <div class="stat-label">التكلفة <i class="fas fa-chevron-down" style="font-size:0.7em"></i></div>
+            </div>
+        </div>
+        <div class="stat-item">
+            <div>
+                <div class="stat-val" id="statTrees">0</div>
+                <div class="stat-label">العدد</div>
+            </div>
+               <div class="stat-icon"><i class="fas fa-tree"></i></div>
+
+        </div>
+
+    </div>
+
+    <!-- الجزء السفلي: مدخلات الأسعار (مخفي افتراضياً) -->
+    <div id="costInputs" class="cost-settings">
+        <div class="cost-input-row">
+            <label>سعر الشتلة:</label>
+            <input type="number" id="priceTree" value="50" oninput="updatePrices()">
+        </div>
+        <div class="cost-input-row">
+            <label>سعر المتر:</label>
+            <input type="number" id="priceHose" value="10" oninput="updatePrices()">
+        </div>
+    </div>
+</div>
+    <div id="toast" class="toast-msg"></div>
+        <!-- داخل <div id="statsPanel"> ... أضف هذه الأسطر في النهاية -->
+<div style="width:1px; background:rgba(0,0,0,0.1); margin:0 5px;"></div>
+        <!-- بطاقة التحكم في المبنى -->
+    <div id="buildingCard" class="tree-card" style="display: none;">
+        <div class="card-header">
+            <div style="display:flex;align-items:center;gap:8px">
+                <i class="fas fa-home" style="color:var(--danger)"></i>
+                <span style="font-weight:bold">مبنى / عائق</span>
+            </div>
+            <button class="close-icon" onclick="closeBuildingCard()"><i class="fas fa-times"></i></button>
+        </div>
+        
+        <div class="card-details">
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px">
+                <div class="input-wrapper">
+                    <span>العرض (م)</span>
+                    <input type="number" id="buildW" oninput="updateBuildingDim('w', this.value)">
+                </div>
+                <div class="input-wrapper">
+                    <span>الطول (م)</span>
+                    <input type="number" id="buildH" oninput="updateBuildingDim('h', this.value)">
+                </div>
+            </div>
+            <button class="action-btn btn-del-tree" style="width:100%" onclick="deleteSelectedBuilding()">
+                <i class="fas fa-trash"></i> حذف المبنى
+            </button>
+        </div>
+    </div>
+  <!-- بطاقة التحكم في المبنى -->
+    <div id="buildingCard" class="tree-card" style="display: none;">
+        <div class="card-header">
+            <div style="display:flex;align-items:center;gap:8px">
+                <i class="fas fa-home" style="color:var(--danger)"></i>
+                <span style="font-weight:bold">مبنى / عائق</span>
+            </div>
+            <button class="close-icon" onclick="closeBuildingCard()"><i class="fas fa-times"></i></button>
+        </div>
+        
+        <div class="card-details">
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px">
+                <div class="input-wrapper">
+                    <span>العرض (م)</span>
+                    <input type="number" id="buildW" oninput="updateBuildingDim('w', this.value)">
+                </div>
+                <div class="input-wrapper">
+                    <span>الطول (م)</span>
+                    <input type="number" id="buildH" oninput="updateBuildingDim('h', this.value)">
+                </div>
+            </div>
+            <button class="action-btn btn-del-tree" style="width:100%" onclick="deleteSelectedBuilding()">
+                <i class="fas fa-trash"></i> حذف المبنى
+            </button>
+        </div>
+    </div>  <script type="module" src="js/main.js"></script>
+</body>
+</html>
